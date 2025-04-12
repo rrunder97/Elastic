@@ -1,6 +1,6 @@
-# indices.py
 import fnmatch
 import time
+import re
 from elasticsearch import exceptions
 from config import es_source, es_target, PREFIX, SLICE_COUNT, BATCH_SIZE, REQUEST_TIMEOUT, THROTTLE_DOCS_PER_SEC, logger
 
@@ -13,6 +13,41 @@ def list_indices():
         return [idx["index"] for idx in raw if not idx["index"].startswith(".")]
     except exceptions.ElasticsearchException as e:
         logger.error("Error listing indices: %s", e)
+        return []
+
+def list_indices_by_regex(es_client, regex_pattern):
+    """
+    Retrieve all non‑system indices that match the given regex pattern.
+    
+    :param es_client: Elasticsearch client instance.
+    :param regex_pattern: Regular expression pattern as a string.
+    :return: List of indices whose names match the regex.
+    """
+    try:
+        raw = es_client.cat.indices(format="json", expand_wildcards="all")
+        indices = [idx["index"] for idx in raw if not idx["index"].startswith(".")]
+        compiled_regex = re.compile(regex_pattern)
+        matching = [index for index in indices if compiled_regex.search(index)]
+        return matching
+    except exceptions.ElasticsearchException as e:
+        logger.error("Error listing indices by regex: %s", e)
+        return []
+
+def list_specific_index(es_client, index_name):
+    """
+    Retrieve a specific index by exact match.
+    
+    :param es_client: Elasticsearch client instance.
+    :param index_name: The exact index name to retrieve.
+    :return: A list containing the index (if found) or an empty list.
+    """
+    try:
+        raw = es_client.cat.indices(format="json", expand_wildcards="all")
+        indices = [idx["index"] for idx in raw if not idx["index"].startswith(".")]
+        specific = [index for index in indices if index == index_name]
+        return specific
+    except exceptions.ElasticsearchException as e:
+        logger.error("Error listing specific index '%s': %s", index_name, e)
         return []
 
 def create_index_if_no_template(es_source, es_target, index_name, new_index_name):
@@ -60,6 +95,9 @@ def create_index_if_no_template(es_source, es_target, index_name, new_index_name
 def swap_aliases(es_client, old_index, new_index, aliases):
     """
     Atomically move each alias in `aliases` from old_index to new_index.
+    
+    NOTE: Currently, this function only adds aliases to the new index.
+    If you need to remove the alias from the old index as well, modify this to include "remove" actions.
     """
     try:
         actions = [{"add": {"index": new_index, "alias": alias}} for alias in aliases]
@@ -80,8 +118,8 @@ def migrate_index(es_source, es_target, index_name):
         "source": {
             "remote": {
                 "host":     es_source.transport.hosts[0]['host'],
-                "username": es_source.transport.hosts[0].get("user", AUTH["user"]),
-                "password": es_source.transport.hosts[0].get("pass", AUTH["pass"])
+                "username": es_source.transport.hosts[0].get("user", "user"),
+                "password": es_source.transport.hosts[0].get("pass", "pass")
             },
             "index": index_name,
             "size":  BATCH_SIZE
