@@ -6,7 +6,7 @@ from elasticsearch import Elasticsearch
 SOURCE_ES = "http://source-es-url:9200"
 TARGET_ES = "http://target-es-url:9200"
 AUTH = {"user": "user", "pass": "pass"}
-PREFIX = "migrated-"
+#PREFIX = "migrated-"
 SLICE_COUNT = 4
 BATCH_SIZE = 1000
 REQUEST_TIMEOUT = 600
