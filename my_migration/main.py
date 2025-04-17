@@ -1,5 +1,4 @@
 # main.py
-
 import argparse
 from config import es_source, es_target, logger
 from cluster_migrations import (
@@ -22,6 +21,16 @@ from indices import (
     list_specific_index,
     migrate_index
 )
+
+#To run for a specific index:
+#python main.py --index my_index_name
+
+# To run using a regex:
+#python main.py --regex '.*logs.*'
+
+#cd ~/Desktop/Elastic/my_migration
+#python main.py --regex '.*mdr.*'
+
 
 def main():
     parser = argparse.ArgumentParser(

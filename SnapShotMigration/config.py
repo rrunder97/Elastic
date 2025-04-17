@@ -24,7 +24,7 @@ es_source = Elasticsearch(
     SOURCE_ES,
     basic_auth=(AUTH["user"], AUTH["pass"])
 )
-es_targ et = Elasticsearch(
+es_target = Elasticsearch(
     TARGET_ES,
     basic_auth=(AUTH["user"], AUTH["pass"])
 )

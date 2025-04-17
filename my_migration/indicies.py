@@ -15,6 +15,7 @@ from config import (
     logger            # Central logger
 )
 from alias_utils import migrate_alias_between_clusters  # Cross‐cluster alias helper
+from validation_utils import compare_doc_counts, compare_mappings
 
 def list_indices(source_client):
     """
@@ -60,6 +61,9 @@ def list_specific_index(source_client, index_name):
     except exceptions.ElasticsearchException as e:
         logger.error("Error listing specific index '%s': %s", index_name, e)
         return []
+
+
+
 
 def create_index_if_no_template(source_client, target_client, index_name, new_index_name):
     """
@@ -176,6 +180,16 @@ def migrate_index(source_client, target_client, index_name):
         else:
             logger.info("✅ Reindex of '%s' complete (%d docs)", index_name, stats.get("created", 0))
 
+
+        # 5) Validation checks before alias cutover
+        if not compare_doc_counts(source_client, target_client, index_name, new_index):
+            logger.error("❌ Document count mismatch for '%s'. Aborting alias cutover.", index_name)
+            return
+
+        if not compare_mappings(source_client, target_client, index_name, new_index):
+            logger.error("❌ Mapping structure mismatch for '%s'. Aborting alias cutover.", index_name)
+            return
+
         # 5) Migrate aliases cross‑cluster, if any exist
         src_aliases = list(
             source_client.indices
@@ -195,3 +209,14 @@ def migrate_index(source_client, target_client, index_name):
         logger.error("TransportError during reindex of '%s': %s", index_name, e.info)
     except Exception as e:
         logger.error("Unexpected error during reindex of '%s': %s", index_name, e)
+
+
+
+
+# if not compare_doc_counts(source_client, target_client, source_index, new_index):
+#     logger.error("Document count mismatch for '%s'. Aborting alias cutover.", source_index)
+#     return
+
+# if not compare_mappings(source_client, target_client, source_index, new_index):
+#     logger.error("Mapping mismatch for '%s'. Aborting alias cutover.", source_index)
+#     return
